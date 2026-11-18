@@ -1,8 +1,7 @@
 # HVB Wristband Firmware
 
-ESP-IDF + NimBLE firmware for an ESP32-C3-MINI-1 wristband that acts as an HVB2 BLE peripheral for the Human Video Board phone app. Spec: [HVB-wristband-ble-module-requirements.md](HVB-wristband-ble-module-requirements.md).
-
-**Status:** scaffold only. Every function is a stub.
+ESP-IDF + NimBLE firmware for an ESP32-C3-MINI-1 wristband that acts as an HVB2 BLE peripheral for the Human Video Board phone app.
+**Status:** scaffold only. Every function is a stub for now (11/18)
 
 ## Layout
 
