@@ -1,0 +1,8 @@
+build/
+managed_components/
+sdkconfig
+sdkconfig.old
+dependencies.lock
+.vscode/
+DevNotes and Logs/
+HVB-wristband-ble-module-requirements.md
