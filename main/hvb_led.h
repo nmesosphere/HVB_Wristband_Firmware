@@ -1,6 +1,9 @@
 /*
  * LED hardware abstraction (FR-8).
  * Pinout / topology / drive method pending designer inputs D1-D4.
+ *
+ * What each function is supposed to do and return (and what the current
+ * stub does instead) is documented above each function in hvb_led.c.
  */
 #pragma once
 

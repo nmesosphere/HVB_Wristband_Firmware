@@ -1,5 +1,8 @@
 /*
  * Local show playback (FR-5 / FR-6). Driven from the app task tick.
+ *
+ * What each function is supposed to do and return (and what the current
+ * stub does instead) is documented above each function in hvb_playback.c.
  */
 #pragma once
 

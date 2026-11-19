@@ -3,6 +3,9 @@
  * its seat color sequence via 3010 and the band mirrors it. The user
  * confirms visually; on mismatch the phone disconnects and the band
  * returns to advertising.
+ *
+ * What each function is supposed to do and return (and what the current
+ * stub does instead) is documented above each function in hvb_pairing.c.
  */
 #pragma once
 

@@ -1,12 +1,17 @@
 /*
  * HVB2 wire protocol constants and on-wire formats.
  * Source of truth: HVB-wristband-ble-module-requirements.md §4.
+ *
+ * No stubs here: only constants and packed structs shared by hvb_ble,
+ * hvb_transfer, hvb_storage and hvb_playback. Everything on the wire is
+ * little-endian (which matches the ESP32-C3), so these structs can be
+ * memcpy'd straight from/to BLE buffers.
  */
 #pragma once
 
 #include <stdint.h>
 
-/* UUID base: 38dbdee0-XXXX-462f-85a6-42658cfe6238 */
+/* UUID base: 38b475a5-XXXX-5d96-fa0e-e9858cfe6238 */
 #define HVB_UUID_SERVICE            0x0001
 #define HVB_UUID_FILE_BLOCK         0x3000
 #define HVB_UUID_FILE_LENGTH        0x3001
@@ -46,31 +51,31 @@
 #define HVB2_FRAME_SIZE             5u
 
 typedef struct __attribute__((packed)) {
-    char     magic[4];
-    uint32_t show_id;
-    uint32_t total_frames;
-    uint16_t fps;
-    uint16_t frame_count;
-} hvb2_header_t;
+    char     magic[4];      /* "HVB2", not NUL-terminated */
+    uint32_t show_id;       /* key the show is stored/started under */
+    uint32_t total_frames;  /* show length in frames; playback ends here */
+    uint16_t fps;           /* frames per second, converts ms -> frame */
+    uint16_t frame_count;   /* number of hvb2_frame_t records that follow */
+} hvb2_header_t;            /* 16 bytes, followed by frame_count frames */
 
 typedef struct __attribute__((packed)) {
-    uint16_t when;
-    uint8_t  r, g, b;
-} hvb2_frame_t;
+    uint16_t when;          /* frame number this color becomes active at */
+    uint8_t  r, g, b;       /* color held until the next keyframe */
+} hvb2_frame_t;             /* 5 bytes */
 
 
 
 /* 3008 payload */
 typedef struct __attribute__((packed)) {
-    uint32_t show_id;
-    uint32_t delay_ms;
+    uint32_t show_id;       /* show to play; must already be stored, != 0 */
+    uint32_t delay_ms;      /* start after this long, <= HVB_START_DELAY_MAX_MS */
 } hvb_start_cmd_t;
 
 
 
 /* 3012 payload */
 typedef struct __attribute__((packed)) {
-    uint32_t bytes_available;
-    uint32_t bytes_used_by_shows;
-    uint32_t show_count;
+    uint32_t bytes_available;      /* room left for more shows */
+    uint32_t bytes_used_by_shows;  /* memory taken by stored shows */
+    uint32_t show_count;           /* number of shows stored */
 } hvb_storage_status_t;

@@ -1,6 +1,9 @@
 /*
  * Show store: multiple parsed HVB2 shows keyed by uint32 show id.
  * v1: RAM session storage (pending designer input D6).
+ *
+ * What each function is supposed to do and return (and what the current
+ * stub does instead) is documented above each function in hvb_storage.c.
  */
 #pragma once
 

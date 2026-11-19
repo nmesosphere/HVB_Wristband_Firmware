@@ -4,6 +4,9 @@
  * BLE callbacks never touch LEDs or do heavy work (§9.2). They post an
  * hvb_event_t to the app task, which owns all state transitions, LED
  * output, and the playback tick.
+ *
+ * What each function is supposed to do and return (and what the current
+ * stub does instead) is documented above each function in hvb_app.c.
  */
 #pragma once
 

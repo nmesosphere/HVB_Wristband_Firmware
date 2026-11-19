@@ -1,33 +1,116 @@
+/*
+ * NimBLE GATT peripheral for the HVB service.
+ *
+ * Runs in the NimBLE host task. Access callbacks must stay short: they
+ * parse/validate the write, then either call a cheap setter
+ * (hvb_transfer_*) or post an hvb_event_t to the app task. They never
+ * touch LEDs or CRC/parse whole files.
+ *
+ * Intended characteristic behaviour (service 0001, UUIDs in hvb_protocol.h):
+ *
+ *   3000 FILE_BLOCK        write  <= 128 bytes  -> hvb_transfer_write_block()
+ *   3001 FILE_LENGTH       write  uint32        -> hvb_transfer_set_length()
+ *   3002 FILE_MAX_LENGTH   read   uint32        <- hvb_transfer_max_length()
+ *   3003 FILE_CHECKSUM     write  uint32 CRC32  -> hvb_transfer_set_checksum()
+ *   3004 COMMAND           write  uint32        -> hvb_transfer_command()
+ *                                                  (1 = start, 2 = cancel)
+ *   3005 TRANSFER_STATUS   read/notify uint32   <- hvb_transfer_status()
+ *   3006 ERROR_MESSAGE     read/notify text     (last error, <= 128 bytes)
+ *   3007 SHOW_INFO         write  uint32        -> hvb_transfer_set_show_id()
+ *   3008 START_SHOW        write  hvb_start_cmd_t -> post HVB_EVT_START_SHOW
+ *   3009 STOP_SHOW         write                -> post HVB_EVT_STOP_SHOW
+ *   3010 COLOR             write  "RRGGBB"      -> parse hex, post HVB_EVT_COLOR
+ *   3011 FIRMWARE_VERSION  read   uint32        <- HVB_FIRMWARE_VERSION
+ *   3012 STORAGE_STATUS    read   hvb_storage_status_t <- hvb_storage_get_status()
+ *
+ * Writes with the wrong length or malformed content should be rejected
+ * with an ATT error (e.g. BLE_ATT_ERR_INVALID_ATTR_VALUE_LEN) rather than
+ * silently ignored. While pairing is active, the first write to anything
+ * other than 3010 counts as the phone confirming us (hvb_pairing_confirm).
+ *
+ * GAP events: connect    -> post HVB_EVT_CONNECTED;
+ *             disconnect -> post HVB_EVT_DISCONNECTED and re-advertise.
+ */
 #include "hvb_ble.h"
 #include "hvb_protocol.h"
 
 // TODO: GATT service table (3000-3012) with access callbacks
 // TODO: GAP event handler (connect -> HVB_EVT_CONNECTED, disconnect -> HVB_EVT_DISCONNECTED + re-advertise)
 
+/*
+ * hvb_ble_init — bring up the NimBLE stack and the HVB GATT service.
+ *
+ * Should: nimble_port_init(), init the GAP/GATT services, register the
+ * table above, set the GAP device name to HVB_GAP_NAME, set a host sync
+ * callback that calls hvb_ble_start_advertising(), then start the host
+ * task with nimble_port_freertos_init().
+ *
+ * Returns: ESP_OK on success, or the error from the failing NimBLE call.
+ * Stub:    returns ESP_OK; BLE is not started.
+ */
 esp_err_t hvb_ble_init(void)
 {
     // TODO: nimble_port_init, register GATT services, set device name, start host task
     return ESP_OK;
 }
 
+/*
+ * hvb_ble_start_advertising — make the band discoverable/connectable.
+ *
+ * Should: start undirected connectable advertising whose payload contains
+ * the 128-bit service UUID 0001 and the name HVB_ADV_NAME ("HVB").
+ * Called on host sync and after every disconnect.
+ *
+ * Returns: ESP_OK if advertising started;
+ *          ESP_FAIL if ble_gap_adv_start() fails.
+ * Stub:    returns ESP_OK; nothing is advertised.
+ */
 esp_err_t hvb_ble_start_advertising(void)
 {
     // TODO: connectable adv with service UUID 0001 + name "HVB"
     return ESP_OK;
 }
 
+/*
+ * hvb_ble_disconnect — drop the current central.
+ *
+ * Used by the app task when pairing times out. Should call
+ * ble_gap_terminate() on the stored connection handle; the normal GAP
+ * disconnect event then fires and re-advertising happens there.
+ *
+ * Returns: ESP_OK if termination was requested;
+ *          ESP_ERR_INVALID_STATE if nothing is connected.
+ * Stub:    returns ESP_OK; does nothing.
+ */
 esp_err_t hvb_ble_disconnect(void)
 {
     // TODO
     return ESP_OK;
 }
 
+/*
+ * hvb_ble_notify_transfer_status — publish a new 3005 value.
+ *
+ * Should: store `status` (HVB_STATUS_SUCCESS / ERROR / IN_PROGRESS) as the
+ * readable value of 3005 and send a notification if the phone has
+ * subscribed. No return value; a failed notify is just logged.
+ * Stub:    does nothing.
+ */
 void hvb_ble_notify_transfer_status(uint32_t status)
 {
     (void)status;
     // TODO
 }
 
+/*
+ * hvb_ble_notify_error_message — publish a new 3006 value.
+ *
+ * Should: copy `msg` (truncated to HVB_ERROR_MESSAGE_MAX bytes) into the
+ * 3006 value and notify the phone if subscribed. Used to explain why a
+ * transfer or command failed (bad CRC, out of memory, unknown show, ...).
+ * No return value.
+ * Stub:    does nothing.
+ */
 void hvb_ble_notify_error_message(const char *msg)
 {
     (void)msg;

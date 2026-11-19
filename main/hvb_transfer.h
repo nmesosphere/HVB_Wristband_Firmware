@@ -1,5 +1,8 @@
 /*
  * HVB2 file transfer state machine (§4.2) + CRC32 (§4.3).
+ *
+ * What each function is supposed to do and return (and what the current
+ * stub does instead) is documented above each function in hvb_transfer.c.
  */
 #pragma once
 

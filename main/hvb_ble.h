@@ -1,6 +1,9 @@
 /*
  * NimBLE GATT peripheral: HVB service 0001, characteristics 3000-3012,
  * advertising, connect/disconnect handling.
+ *
+ * What each function is supposed to do and return (and what the current
+ * stub does instead) is documented above each function in hvb_ble.c.
  */
 #pragma once
 
