@@ -31,10 +31,12 @@
  * GAP events: connect    -> post HVB_EVT_CONNECTED;
  *             disconnect -> post HVB_EVT_DISCONNECTED and re-advertise.
  */
+#include <stdio.h>
 #include "hvb_ble.h"
 #include "hvb_protocol.h"
 
 #include "esp_log.h"
+#include "esp_mac.h"    // For building the wristband's ID
 #include "nimble/nimble_port_freertos.h"
 #include "nimble/nimble_port.h"
 #include "services/gap/ble_svc_gap.h"
@@ -43,7 +45,34 @@
 
 
 static const char *TAG = "hvb_ble";
+static char wristband_id[HVB_ADV_NAME_SIZE + 1];  // "+1 to account for the '\0' terminator "
 
+/* Build the unique ID for the wristband based on its MAC address (for testing, debugging, and fallback BLE connections)*/
+
+static char *create_wristband_ID(void){
+    
+    uint8_t mac_address_byte[6] = {0};
+    esp_err_t err = esp_read_mac(mac_address_byte, ESP_MAC_BT);
+
+    if (err != ESP_OK){
+        ESP_LOGW(TAG, "esp_read_mac(BT) failed (%s); device name suffix will now default to 0000",
+            esp_err_to_name(err));
+    }
+
+    /* Fills the wristband_id buffer in this format: "prefix-XXXX" where 'XX' is a specific byte from the MAC address
+        prefix -> "HVB"
+        Use last 2 bytes from the MAC address -> XXXX = <byte_4><byte_5>
+    */
+    snprintf(wristband_id, sizeof(wristband_id), "%s-%02X%02X", 
+            HVB_ADV_PREFIX, mac_address_byte[4], mac_address_byte[5]);
+
+    ESP_LOGI(TAG, "Wristband ID: %s", wristband_id);  
+    return wristband_id;
+}
+
+
+
+/* RTOS tasks */
 static void hvb_on_stack_reset(int reason){
     ESP_LOGW(TAG, "NimBLE stack was reset for reason: %d", reason);
 }
@@ -61,7 +90,6 @@ static void hvb_host_task(void *param){
     nimble_port_run();
     nimble_port_freertos_deinit();
 }
-
 
 static void hvb_host_config_init(void) {
     /* Set host callbacks */
@@ -88,7 +116,10 @@ static void hvb_host_config_init(void) {
 esp_err_t hvb_ble_init(void)
 {
     // DONE: nimble_port_init, built-in GAP/GATT services, device name, start host task
-    // TODO (item 10): register the HVB GATT table (ble_gatts_count_cfg + ble_gatts_add_svcs)
+    // TODO: (item 10): register the HVB GATT table (ble_gatts_count_cfg + ble_gatts_add_svcs)
+
+    /* Create the ID for this wristband */
+    create_wristband_ID();
 
     /* nimble_port_init */
     esp_err_t ret = nimble_port_init();         // Starts the NimBLE host stack (handles higher-level BT functions)
@@ -107,7 +138,9 @@ esp_err_t hvb_ble_init(void)
     }
     ble_svc_gatt_init();
 
-    /* TODO (item 10): register HVB service table here */
+
+    /* TODO: (item 10): register HVB service table here */
+
 
     /* Host configuration */
     hvb_host_config_init();
@@ -123,7 +156,7 @@ esp_err_t hvb_ble_init(void)
  * hvb_ble_start_advertising — make the band discoverable/connectable.
  *
  * Should: start undirected connectable advertising whose payload contains
- * the 128-bit service UUID 0001 and the name HVB_ADV_NAME ("HVB").
+ * the 128-bit service UUID 0001 and the name wristband_id ("HVB-XXXX").
  * Called on host sync and after every disconnect.
  *
  * Returns: ESP_OK if advertising started;
@@ -132,7 +165,7 @@ esp_err_t hvb_ble_init(void)
  */
 esp_err_t hvb_ble_start_advertising(void)
 {
-    // TODO: connectable adv with service UUID 0001 + name "HVB"
+    // TODO: connectable adv with service UUID 0001 + name "HVB-XXXX"
     ESP_LOGI(TAG, "Host is synced");
     return ESP_OK;
 }
@@ -150,7 +183,7 @@ esp_err_t hvb_ble_start_advertising(void)
  */
 esp_err_t hvb_ble_disconnect(void)
 {
-    // TODO
+    // TODO:
     return ESP_OK;
 }
 
@@ -165,7 +198,7 @@ esp_err_t hvb_ble_disconnect(void)
 void hvb_ble_notify_transfer_status(uint32_t status)
 {
     (void)status;
-    // TODO
+    // TODO:
 }
 
 /*
@@ -180,5 +213,5 @@ void hvb_ble_notify_transfer_status(uint32_t status)
 void hvb_ble_notify_error_message(const char *msg)
 {
     (void)msg;
-    // TODO
+    // TODO:
 }

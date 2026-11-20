@@ -39,7 +39,8 @@
 #define HVB_UUID_FIRMWARE_VERSION   0x3011
 #define HVB_UUID_STORAGE_STATUS     0x3012
 
-#define HVB_ADV_NAME                "HVB"
+#define HVB_ADV_NAME_SIZE           8u
+#define HVB_ADV_PREFIX              "HVB"
 #define HVB_GAP_NAME                "Human Video Board"
 #define HVB_FIRMWARE_VERSION        2u
 
