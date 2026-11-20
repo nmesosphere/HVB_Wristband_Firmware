@@ -52,6 +52,8 @@ static void hvb_on_stack_sync(void) {
     /* Stack is ready: the only safe point to start advertising */
     ESP_LOGI(TAG, "host synced, name=\"%s\"", ble_svc_gap_device_name());
     hvb_ble_start_advertising();
+
+    
 }
 
 static void hvb_host_task(void *param){
