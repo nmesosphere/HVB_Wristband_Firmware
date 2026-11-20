@@ -35,9 +35,39 @@
 #include "hvb_protocol.h"
 
 #include "esp_log.h"
+#include "nimble/nimble_port_freertos.h"
 #include "nimble/nimble_port.h"
+#include "services/gap/ble_svc_gap.h"
+#include "services/gatt/ble_svc_gatt.h"
+#include "host/ble_hs.h"
+
 
 static const char *TAG = "hvb_ble";
+
+static void hvb_on_stack_reset(int reason){
+    ESP_LOGW(TAG, "NimBLE stack was reset for reason: %d", reason);
+}
+
+static void hvb_on_stack_sync(void) {
+    /* Stack is ready: the only safe point to start advertising */
+    ESP_LOGI(TAG, "host synced, name=\"%s\"", ble_svc_gap_device_name());
+    hvb_ble_start_advertising();
+}
+
+static void hvb_host_task(void *param){
+    ESP_LOGI(TAG, "host task has started");
+    nimble_port_run();
+    nimble_port_freertos_deinit();
+}
+
+
+static void hvb_host_config_init(void) {
+    /* Set host callbacks */
+    ble_hs_cfg.reset_cb = hvb_on_stack_reset;
+    ble_hs_cfg.sync_cb = hvb_on_stack_sync;
+    /* Not needed yet: gatts_register_cb (debug logging of registered
+     * attributes) and store_status_cb / ble_store_config_init (bonding). */
+}
 
 // TODO: GATT service table (3000-3012) with access callbacks
 // TODO: GAP event handler (connect -> HVB_EVT_CONNECTED, disconnect -> HVB_EVT_DISCONNECTED + re-advertise)
@@ -55,17 +85,35 @@ static const char *TAG = "hvb_ble";
  */
 esp_err_t hvb_ble_init(void)
 {
-    // TODO: nimble_port_init, register GATT services, set device name, start host task
-    // IN PROGRESS
+    // DONE: nimble_port_init, built-in GAP/GATT services, device name, start host task
+    // TODO (item 10): register the HVB GATT table (ble_gatts_count_cfg + ble_gatts_add_svcs)
+
     /* nimble_port_init */
-    esp_err_t ret = nimble_port_init();
+    esp_err_t ret = nimble_port_init();         // Starts the NimBLE host stack (handles higher-level BT functions)
     if (ret != ESP_OK){
         ESP_LOGE(TAG, "failed to initialize nimble stack: %s", esp_err_to_name(ret));
         return ret;
     }
 
-    /* register GATT services ( 0001 - 3011 ) */
-    
+    /* NimBLE's built-in GAP + GATT services, and the GAP device name */
+    ble_svc_gap_init();
+    int rc = ble_svc_gap_device_name_set(HVB_GAP_NAME);
+    if (rc != 0) {
+        ESP_LOGE(TAG, "failed to set device name, rc=%d", rc);
+        nimble_port_deinit();
+        return ESP_FAIL;
+    }
+    ble_svc_gatt_init();
+
+    /* TODO (item 10): register HVB service table here */
+
+    /* Host configuration */
+    hvb_host_config_init();
+
+    /* Start host task*/
+    nimble_port_freertos_init(hvb_host_task);
+
+
     return ret;
 }
 
@@ -83,6 +131,7 @@ esp_err_t hvb_ble_init(void)
 esp_err_t hvb_ble_start_advertising(void)
 {
     // TODO: connectable adv with service UUID 0001 + name "HVB"
+    ESP_LOGI(TAG, "Host is synced");
     return ESP_OK;
 }
 
