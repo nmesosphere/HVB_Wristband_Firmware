@@ -34,6 +34,11 @@
 #include "hvb_ble.h"
 #include "hvb_protocol.h"
 
+#include "esp_log.h"
+#include "nimble/nimble_port.h"
+
+static const char *TAG = "hvb_ble";
+
 // TODO: GATT service table (3000-3012) with access callbacks
 // TODO: GAP event handler (connect -> HVB_EVT_CONNECTED, disconnect -> HVB_EVT_DISCONNECTED + re-advertise)
 
@@ -51,7 +56,17 @@
 esp_err_t hvb_ble_init(void)
 {
     // TODO: nimble_port_init, register GATT services, set device name, start host task
-    return ESP_OK;
+    // IN PROGRESS
+    /* nimble_port_init */
+    esp_err_t ret = nimble_port_init();
+    if (ret != ESP_OK){
+        ESP_LOGE(TAG, "failed to initialize nimble stack: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    /* register GATT services ( 0001 - 3011 ) */
+    
+    return ret;
 }
 
 /*

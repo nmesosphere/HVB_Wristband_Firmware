@@ -23,7 +23,7 @@
 void hvb_transfer_set_show_id(uint32_t show_id)
 {
     (void)show_id;
-    // TODO
+    // TODO::
 }
 
 /*
@@ -34,7 +34,7 @@ void hvb_transfer_set_show_id(uint32_t show_id)
 void hvb_transfer_set_length(uint32_t length)
 {
     (void)length;
-    // TODO
+    // TODO:
 }
 
 /*
@@ -44,7 +44,7 @@ void hvb_transfer_set_length(uint32_t length)
 void hvb_transfer_set_checksum(uint32_t crc)
 {
     (void)crc;
-    // TODO
+    // TODO:
 }
 
 /*
@@ -65,7 +65,7 @@ void hvb_transfer_set_checksum(uint32_t crc)
 esp_err_t hvb_transfer_command(uint32_t cmd)
 {
     (void)cmd;
-    // TODO: 1 = allocate buffer + IN_PROGRESS, 2 = cancel
+    // TODO:: 1 = allocate buffer + IN_PROGRESS, 2 = cancel
     return ESP_OK;
 }
 
@@ -86,7 +86,7 @@ esp_err_t hvb_transfer_write_block(const uint8_t *data, size_t len)
 {
     (void)data;
     (void)len;
-    // TODO: append; when length reached post HVB_EVT_TRANSFER_COMPLETE
+    // TODO:: append; when length reached post HVB_EVT_TRANSFER_COMPLETE
     return ESP_OK;
 }
 
@@ -107,7 +107,7 @@ esp_err_t hvb_transfer_write_block(const uint8_t *data, size_t len)
  */
 esp_err_t hvb_transfer_finalize(void)
 {
-    // TODO: CRC32 check, header validation, hvb_storage_store()
+    // TODO:: CRC32 check, header validation, hvb_storage_store()
     return ESP_OK;
 }
 
@@ -121,7 +121,7 @@ esp_err_t hvb_transfer_finalize(void)
  */
 void hvb_transfer_cancel(void)
 {
-    // TODO: free buffer, status = ERROR
+    // TODO:: free buffer, status = ERROR
 }
 
 /*
@@ -133,7 +133,7 @@ void hvb_transfer_cancel(void)
  */
 uint32_t hvb_transfer_max_length(void)
 {
-    // TODO: derive from free heap minus BLE reserve (§9.5)
+    // TODO:: derive from free heap minus BLE reserve (§9.5)
     return 0;
 }
 
@@ -146,7 +146,7 @@ uint32_t hvb_transfer_max_length(void)
  */
 uint32_t hvb_transfer_status(void)
 {
-    // TODO
+    // TODO:
     return HVB_STATUS_SUCCESS;
 }
 
@@ -159,7 +159,7 @@ uint32_t hvb_transfer_status(void)
  */
 hvb_xfer_state_t hvb_transfer_state(void)
 {
-    // TODO
+    // TODO:
     return HVB_XFER_IDLE;
 }
 
@@ -178,6 +178,6 @@ uint32_t hvb_crc32(const uint8_t *data, size_t len)
 {
     (void)data;
     (void)len;
-    // TODO: port reference crc32 / crc32ForByte exactly
+    // TODO:: port reference crc32 / crc32ForByte exactly
     return 0;
 }

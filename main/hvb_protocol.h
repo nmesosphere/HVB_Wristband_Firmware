@@ -12,6 +12,18 @@
 #include <stdint.h>
 
 /* UUID base: 38b475a5-XXXX-5d96-fa0e-e9858cfe6238 */
+/*  Builds the characteristic UUID but subs the 'XXXX' bytes with any of the protocol bytes below as needed 
+    The macro bytes are REVERSED (little endian), because that is the expected format for NimBLE
+*/
+
+#define HVB_UUID128_BYTES(x)                \
+        0x38, 0x62, 0xfe, 0x8c,             \
+        0x85, 0xe9, 0x0e, 0xfa,             \
+        0x96, 0x5d,                         \
+        (x & 0xFF), ((x & 0xFF00) >> 8),    \
+        0xa5, 0x75, 0xb4, 0x38
+
+
 #define HVB_UUID_SERVICE            0x0001
 #define HVB_UUID_FILE_BLOCK         0x3000
 #define HVB_UUID_FILE_LENGTH        0x3001

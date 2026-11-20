@@ -33,6 +33,7 @@
 #include "esp_log.h"
 #include "esp_err.h"
 #include "nvs_flash.h"
+#include "host/ble_uuid.h"   /* TEMP: UUID macro boot test */
 
 #include "hvb_protocol.h"
 #include "hvb_led.h"
@@ -54,8 +55,7 @@ static void hvb_nvs_init(void)
     ESP_ERROR_CHECK(err);
 }
 
-void app_main(void)
-{
+void app_main(void){
     ESP_LOGI(TAG, "HVB boot fw=%u", (unsigned)HVB_FIRMWARE_VERSION);
 
     hvb_nvs_init();
@@ -74,4 +74,11 @@ void app_main(void)
     ESP_LOGI(TAG, "ble ok");
 
     ESP_LOGI(TAG, "init complete");
+
+    /* TEMP: UUID macro boot test — remove once verified */
+    static const ble_uuid128_t svc_uuid = BLE_UUID128_INIT(HVB_UUID128_BYTES(HVB_UUID_SERVICE));
+    static const ble_uuid128_t fw_uuid  = BLE_UUID128_INIT(HVB_UUID128_BYTES(HVB_UUID_FIRMWARE_VERSION));
+    char buf[BLE_UUID_STR_LEN];
+    ESP_LOGI(TAG, "uuid svc = %s", ble_uuid_to_str(&svc_uuid.u, buf));
+    ESP_LOGI(TAG, "uuid fw  = %s", ble_uuid_to_str(&fw_uuid.u, buf));
 }
