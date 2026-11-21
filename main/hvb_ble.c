@@ -32,6 +32,7 @@
  *             disconnect -> post HVB_EVT_DISCONNECTED and re-advertise.
  */
 #include <stdio.h>
+#include <string.h>
 #include "hvb_ble.h"
 #include "hvb_protocol.h"
 
@@ -42,10 +43,15 @@
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
 #include "host/ble_hs.h"
+#include "host/util/util.h"
 
 
 static const char *TAG = "hvb_ble";
-static char wristband_id[HVB_ADV_NAME_SIZE + 1];  // "+1 to account for the '\0' terminator "
+static const ble_uuid128_t hvb_svc_uuid = BLE_UUID128_INIT(HVB_UUID128_BYTES(HVB_UUID_SERVICE));
+
+static char wristband_id[HVB_ADV_NAME_SIZE + 1];  // '+ 1' to account for the '\0' terminator
+static uint8_t hvb_own_addr_type;
+static int hvb_gap_event(struct ble_gap_event *event, void *arg);
 
 /* Build the unique ID for the wristband based on its MAC address (for testing, debugging, and fallback BLE connections)*/
 
@@ -78,11 +84,32 @@ static void hvb_on_stack_reset(int reason){
 }
 
 static void hvb_on_stack_sync(void) {
-    /* Stack is ready: the only safe point to start advertising */
-    ESP_LOGI(TAG, "host synced, name=\"%s\"", ble_svc_gap_device_name());
-    hvb_ble_start_advertising();
+    
+    /* 'rc' = 'Return Code' */
+    int rc = ble_hs_util_ensure_addr(0);
+
+    if(rc != 0){
+        ESP_LOGE(TAG, "Could not configure device's BLE address rc = %d", rc);
+        return;
+    }
+    
+    rc = ble_hs_id_infer_auto(0, &hvb_own_addr_type);
+
+    if(rc != 0){
+        ESP_LOGE(TAG, "Could not choose device's BLE address type: rc = %d", rc);
+        return;
+    }
+
 
     
+    /* Stack is ready: the only safe point to start advertising */
+    
+    ESP_LOGI(TAG, "host synced, name=\"%s\"", ble_svc_gap_device_name());
+    
+    /* No automatic retry yet: if this fails the band stays silent until reset */
+    if (hvb_ble_start_advertising() != ESP_OK){
+        ESP_LOGE(TAG, "Wristband cannot advertise");
+    }
 }
 
 static void hvb_host_task(void *param){
@@ -160,14 +187,92 @@ esp_err_t hvb_ble_init(void)
  * Called on host sync and after every disconnect.
  *
  * Returns: ESP_OK if advertising started;
- *          ESP_FAIL if ble_gap_adv_start() fails.
- * Stub:    returns ESP_OK; nothing is advertised.
+ *          ESP_FAIL if setting the fields or starting advertising fails.
  */
 esp_err_t hvb_ble_start_advertising(void)
 {
-    // TODO: connectable adv with service UUID 0001 + name "HVB-XXXX"
-    ESP_LOGI(TAG, "Host is synced");
+    // DONE: connectable adv with service UUID 0001 + name "HVB-XXXX"
+    struct ble_hs_adv_fields fields;
+
+    /** From ESP-IDF Documentation
+     *  Set the advertisement data included in our advertisements:
+     *     o Flags (indicates advertisement type and other general info).
+     *     o Device name (wristband_id, "HVB-XXXX").
+     *     o 128-bit HVB service UUID.
+     *  Total = 3 + 10 + 18 = 31 bytes, exactly the legacy advertising limit.
+     */
+
+    memset(&fields, 0, sizeof(fields));      // First, zero-out the fields, so it's not filled with garbage values. Also, zeroes-out unused fields
+
+    // Set the advertisement fields to actual values
+    fields.flags = BLE_HS_ADV_F_DISC_GEN |
+                   BLE_HS_ADV_F_BREDR_UNSUP;
+    
+    fields.name = (const uint8_t *)wristband_id;    // NimBLE expects bytes (uint8_t), our buffer is char
+    fields.name_len = strlen(wristband_id);
+    fields.name_is_complete = 1;
+
+    fields.uuids128 = &hvb_svc_uuid;
+    fields.num_uuids128 = 1;
+    fields.uuids128_is_complete = 1;
+
+    int rc = ble_gap_adv_set_fields(&fields);
+    if (rc != 0){
+        ESP_LOGE(TAG, "Failed to set BLE advertising fields, rc=%d", rc);
+        return ESP_FAIL;
+    }
+
+    struct ble_gap_adv_params adv_params;
+    memset(&adv_params, 0, sizeof(adv_params));
+
+    adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
+    adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
+
+    rc = ble_gap_adv_start(hvb_own_addr_type, NULL, BLE_HS_FOREVER, &adv_params, hvb_gap_event, NULL);
+
+    if (rc != 0){
+        ESP_LOGE(TAG, "Failed to start BLE advertising, rc=%d", rc);
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "Advertising as \"%s\"", wristband_id);
     return ESP_OK;
+}
+
+/*
+ * hvb_gap_event — NimBLE calls this for connection/advertising events.
+ *
+ * Minimal version for item 3: log connect/disconnect and keep the band
+ * discoverable. Item 7 adds: storing conn_handle, posting
+ * HVB_EVT_CONNECTED / HVB_EVT_DISCONNECTED, subscribe tracking.
+ *
+ * Returns: 0 (NimBLE ignores the value for these events).
+ */
+static int hvb_gap_event(struct ble_gap_event *event, void *arg)
+{
+    switch (event->type) {
+    case BLE_GAP_EVENT_CONNECT:
+        ESP_LOGI(TAG, "connect %s, status=%d",
+                 event->connect.status == 0 ? "ok" : "failed", event->connect.status);
+        if (event->connect.status != 0) {
+            hvb_ble_start_advertising();        // attempt failed: advertise again
+        }
+        break;
+
+    case BLE_GAP_EVENT_DISCONNECT:
+        ESP_LOGI(TAG, "disconnect, reason=%d", event->disconnect.reason);
+        hvb_ble_start_advertising();            // become discoverable again
+        break;
+
+    case BLE_GAP_EVENT_ADV_COMPLETE:
+        ESP_LOGI(TAG, "advertising complete, reason=%d", event->adv_complete.reason);
+        hvb_ble_start_advertising();
+        break;
+
+    default:
+        break;
+    }
+    return 0;
 }
 
 /*

@@ -41,7 +41,7 @@
 
 #define HVB_ADV_NAME_SIZE           8u
 #define HVB_ADV_PREFIX              "HVB"
-#define HVB_GAP_NAME                "Human Video Board"
+#define HVB_GAP_NAME                "HVB-Wristband"
 #define HVB_FIRMWARE_VERSION        2u
 
 #define HVB_FILE_BLOCK_MAX          128u
